@@ -79,7 +79,7 @@ def exibir_detalhes_persona(coluna_detalhes: str):
         st.text("Dados indisponíveis.")
 
 def clean_spines(ax):
-    for spine in ['top', 'right', 'bottom', 'left']:
+    for spine in ['top', 'right']:
         ax.spines[spine].set_visible(False)
     ax.tick_params(axis='both', which='both', length=0)
 
