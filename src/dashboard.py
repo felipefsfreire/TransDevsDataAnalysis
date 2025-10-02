@@ -56,7 +56,7 @@ st.set_page_config(page_title="TransDevs Data Analysis", page_icon=LOGO_PATH, la
 
 # --- Paleta de Cores e Estilo ---
 PRIMARY_COLOR = "#C738D8"; BACKGROUND_COLOR = "#121212"; TEXT_COLOR = "#FFFFFF"; SECONDARY_PALETTE = "plasma"
-plt.rcParams.update({'text.color': TEXT_COLOR, 'axes.labelcolor': TEXT_COLOR, 'xtick.color': TEXT_COLOR, 'ytick.color': TEXT_COLOR, 'figure.facecolor': BACKGROUND_COLOR, 'axes.facecolor': BACKGROUND_COLOR, 'savefig.facecolor': BACKGROUND_COLOR,})
+plt.rcParams.update({'text.color': TEXT_COLOR, 'axes.labelcolor': TEXT_COLOR, 'xtick.color': TEXT_COLOR, 'ytick.color': TEXT_COLOR, 'axes.edgecolor': TEXT_COLOR, 'figure.facecolor': BACKGROUND_COLOR, 'axes.facecolor': BACKGROUND_COLOR, 'savefig.facecolor': BACKGROUND_COLOR,})
 
 # --- Funções Auxiliares ---
 @st.cache_data
@@ -102,7 +102,7 @@ if pagina_selecionada == "Visão Geral":
         estados_brasileiros = df[~df['estado_padronizado'].isin(['Internacional', 'Inválido'])]; estados_alcancados = estados_brasileiros['estado_padronizado'].nunique(); col2.metric("Estados Brasileiros Alcançados", f"{estados_alcancados}")
         trabalhando_count = df[df['working'].str.lower().str.contains('sim|empregade', na=False)].shape[0]; taxa_empregabilidade = (trabalhando_count / total_pessoas) * 100 if total_pessoas > 0 else 0; col3.metric("Taxa de Empregabilidade na Área", f"{taxa_empregabilidade:.1f}%")
         st.markdown("---"); st.subheader("Distribuição Geográfica da Comunidade (%)")
-        fig, ax = plt.subplots(figsize=(12, 8)); counts = df['regiao'].value_counts(normalize=True).mul(100); sns.barplot(x=counts.index, y=counts.values, ax=ax, color=PRIMARY_COLOR); ax.set_title("Proporção de Pessoas por Região do Brasil", fontsize=18); ax.set_xlabel("Região"); ax.set_ylabel("Percentual (%)"); ax.yaxis.set_major_formatter(mtick.PercentFormatter());
+        fig, ax = plt.subplots(figsize=(12, 8)); counts = df['regiao'].value_counts(normalize=True).mul(100); sns.barplot(x=counts.index, y=counts.values, ax=ax, color=PRIMARY_COLOR, edgecolor=TEXT_COLOR); ax.set_title("Proporção de Pessoas por Região do Brasil", fontsize=18); ax.set_xlabel("Região"); ax.set_ylabel("Percentual (%)"); ax.yaxis.set_major_formatter(mtick.PercentFormatter());
         for container in ax.containers: ax.bar_label(container, fmt='%.1f%%', color=TEXT_COLOR, fontsize=10)
         st.pyplot(fig)
 
@@ -248,7 +248,7 @@ elif pagina_selecionada == "Análise de Voluntariado":
             if os.path.exists(ATUACAO_COUNT_PATH):
                 df_atuacao = pd.read_csv(ATUACAO_COUNT_PATH); fig, ax = plt.subplots(figsize=(10, 6)); sns.barplot(y='atuacao', x='count', data=df_atuacao.nlargest(10, 'count'), ax=ax, color=PRIMARY_COLOR, orient='h'); ax.set_xlabel("Nº de Menções"); ax.set_ylabel("Área de Atuação (Tags)"); st.pyplot(fig)
         with col2:
-            st.subheader("Nível Profissional: Comparativo"); fig2, ax2 = plt.subplots(figsize=(10, 6)); crosstab_vol_level = pd.crosstab(df['professional_level_padronizado'], df['is_volunteer'], normalize='columns').mul(100); crosstab_vol_level.plot(kind='barh', ax=ax2, color=['#C738D8', PRIMARY_COLOR]); ax2.set_xlabel("Percentual (%)"); ax2.set_ylabel("Nível Profissional"); ax2.xaxis.set_major_formatter(mtick.PercentFormatter()); st.pyplot(fig2)
+            st.subheader("Nível Profissional: Comparativo"); fig2, ax2 = plt.subplots(figsize=(10, 6)); crosstab_vol_level = pd.crosstab(df['professional_level_padronizado'], df['is_volunteer'], normalize='columns').mul(100); crosstab_vol_level.plot(kind='barh', ax=ax2, color=['grey', PRIMARY_COLOR]); ax2.set_xlabel("Percentual (%)"); ax2.set_ylabel("Nível Profissional"); ax2.xaxis.set_major_formatter(mtick.PercentFormatter()); st.pyplot(fig2)
         
         st.markdown("---"); st.subheader("Perfil Detalhado das Personas Voluntárias");
         if 'persona' in df.columns:
