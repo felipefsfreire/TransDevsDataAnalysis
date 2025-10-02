@@ -8,6 +8,33 @@ Data: 02/10/2025
 """
 
 import streamlit as st
+
+def check_password():
+    """Retorna True se a senha estiver correta, False caso contrário."""
+    def password_entered():
+        if st.session_state["password"] == st.secrets["APP_PASSWORD"]:
+            st.session_state["password_correct"] = True
+            del st.session_state["password"]
+        else:
+            st.session_state["password_correct"] = False
+
+    if "password_correct" not in st.session_state:
+        st.session_state["password_correct"] = False
+
+    if not st.session_state["password_correct"]:
+        st.text_input("Senha", type="password", on_change=password_entered, key="password")
+        if "password" in st.session_state and not st.session_state["password_correct"]:
+            st.error("Senha incorreta.")
+        return False
+    else:
+        return True
+
+# Se a senha não for correta, interrompe a execução do resto do app
+if not check_password():
+    st.stop()
+
+
+import streamlit as st
 import pandas as pd
 import os
 import matplotlib.pyplot as plt
