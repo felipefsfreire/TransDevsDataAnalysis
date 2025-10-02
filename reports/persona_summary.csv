@@ -1,0 +1,5 @@
+persona,regiao,faixa_etaria,professional_level_padronizado,working,idade,count
+0,Sudeste,25-34 anos,Iniciante,desempregade,27.8,12
+1,Sudeste,18-24 anos,Iniciante,desempregade,20.9,9
+2,Sudeste,25-34 anos,Pleno,desempregade,29.8,8
+3,Norte,35-44 anos,Iniciante,desempregade,35.5,8
