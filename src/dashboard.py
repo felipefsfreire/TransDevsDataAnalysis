@@ -49,7 +49,6 @@ DATA_PATH = os.path.join(PROJECT_ROOT, 'data', 'processed', 'dados_consolidados_
 PERSONA_SUMMARY_PATH = os.path.join(PROJECT_ROOT, 'reports', 'persona_summary_refinado.csv')
 PERSONA_DETAILS_PATH = os.path.join(PROJECT_ROOT, 'reports', 'persona_details_refinado.csv')
 ATUACAO_COUNT_PATH = os.path.join(PROJECT_ROOT, 'reports', 'atuacao_voluntariado_counts.csv')
-CRESCIMENTO_PATH = os.path.join(PROJECT_ROOT, 'reports', 'crescimento_mensal.csv')
 
 # --- Configurações da Página ---
 st.set_page_config(page_title="TransDevs Data Analysis", page_icon=LOGO_PATH, layout="wide", initial_sidebar_state="expanded")
@@ -80,6 +79,12 @@ def exibir_detalhes_persona(coluna_detalhes: str):
     except (ValueError, SyntaxError):
         st.text("Dados indisponíveis.")
 
+def clean_spines(ax):
+    """Função auxiliar para remover as molduras e ticks de um gráfico."""
+    for spine in ['top', 'right', 'bottom', 'left']:
+        ax.spines[spine].set_visible(False)
+    ax.tick_params(axis='both', which='both', length=0)
+
 # --- Carregamento dos Dados ---
 df = carregar_dados(DATA_PATH)
 
@@ -96,83 +101,55 @@ st.sidebar.info("Dashboard analítico da comunidade TransDevs. Todos os dados fo
 if pagina_selecionada == "Visão Geral":
     st.title("Visão Geral do Impacto da TransDevs")
     if not df.empty:
-        st.markdown("### Indicadores Chave")
-        col1, col2, col3 = st.columns(3)
-        total_pessoas = df['person_id'].nunique(); col1.metric("Pessoas Únicas Analisadas", f"{total_pessoas}")
-        estados_brasileiros = df[~df['estado_padronizado'].isin(['Internacional', 'Inválido'])]; estados_alcancados = estados_brasileiros['estado_padronizado'].nunique(); col2.metric("Estados Brasileiros Alcançados", f"{estados_alcancados}")
-        trabalhando_count = df[df['working'].str.lower().str.contains('sim|empregade', na=False)].shape[0]; taxa_empregabilidade = (trabalhando_count / total_pessoas) * 100 if total_pessoas > 0 else 0; col3.metric("Taxa de Empregabilidade na Área", f"{taxa_empregabilidade:.1f}%")
+        st.markdown("### Indicadores Chave"); col1, col2, col3 = st.columns(3); total_pessoas = df['person_id'].nunique(); col1.metric("Pessoas Únicas Analisadas", f"{total_pessoas}"); estados_brasileiros = df[~df['estado_padronizado'].isin(['Internacional', 'Inválido'])]; estados_alcancados = estados_brasileiros['estado_padronizado'].nunique(); col2.metric("Estados Brasileiros Alcançados", f"{estados_alcancados}"); trabalhando_count = df[df['working'].str.lower().str.contains('sim|empregade', na=False)].shape[0]; taxa_empregabilidade = (trabalhando_count / total_pessoas) * 100 if total_pessoas > 0 else 0; col3.metric("Taxa de Empregabilidade na Área", f"{taxa_empregabilidade:.1f}%")
         st.markdown("---"); st.subheader("Distribuição Geográfica da Comunidade (%)")
-        fig, ax = plt.subplots(figsize=(12, 8)); counts = df['regiao'].value_counts(normalize=True).mul(100); sns.barplot(x=counts.index, y=counts.values, ax=ax, color=PRIMARY_COLOR, edgecolor=TEXT_COLOR); ax.set_title("Proporção de Pessoas por Região do Brasil", fontsize=18); ax.set_xlabel("Região"); ax.set_ylabel("Percentual (%)"); ax.yaxis.set_major_formatter(mtick.PercentFormatter());
+        fig, ax = plt.subplots(figsize=(12, 8)); counts = df['regiao'].value_counts(normalize=True).mul(100); sns.barplot(x=counts.index, y=counts.values, ax=ax, color=PRIMARY_COLOR, edgecolor=BACKGROUND_COLOR); ax.set_title("Proporção de Pessoas por Região do Brasil", fontsize=18); ax.set_xlabel("Região"); ax.set_ylabel("Percentual (%)"); ax.yaxis.set_major_formatter(mtick.PercentFormatter()); clean_spines(ax)
         for container in ax.containers: ax.bar_label(container, fmt='%.1f%%', color=TEXT_COLOR, fontsize=10)
         st.pyplot(fig)
 
 elif pagina_selecionada == "Crescimento & Cursos":
     st.title("Análise de Crescimento e Cursos")
-    st.markdown("Acompanhe a evolução da comunidade e entenda a performance de cada iniciativa educacional.")
-    
-    st.markdown("---")
-    st.subheader("Crescimento da Comunidade ao Longo do Tempo")
-    df_growth = carregar_dados(CRESCIMENTO_PATH)
-    if not df_growth.empty:
-        df_growth = df_growth.set_index('periodo')
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            st.write("**Novas Pessoas por Mês**")
-            st.bar_chart(df_growth['novas_pessoas'], color=PRIMARY_COLOR)
-        with col2:
-            st.write("**Total Acumulado de Pessoas**")
-            st.line_chart(df_growth['total_acumulado'], color=PRIMARY_COLOR)
-    else:
-        st.warning("Dados de crescimento não encontrados. Execute 'analysis.py' para gerá-los.")
-
-    if not df.empty and 'curso_titulo' in df.columns:
-        st.markdown("---")
-        st.subheader("Análise de Performance dos Cursos")
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            st.markdown("**Popularidade (Total de Inscrições)**")
-            popularidade = df['curso_titulo'].value_counts()
-            st.dataframe(popularidade)
-
-        with col2:
-            st.markdown("**Alcance (Pessoas Únicas)**")
-            alcance = df.groupby('curso_titulo')['person_id'].nunique().sort_values(ascending=False)
-            st.dataframe(alcance)
-        
-        st.markdown("---")
-        st.subheader("Engajamento: Inscrições por Pessoa")
-        inscricoes_por_pessoa = df.groupby('person_id')['curso_titulo'].count().value_counts().sort_index()
-        fig, ax = plt.subplots(figsize=(10, 6))
-        sns.barplot(x=inscricoes_por_pessoa.index, y=inscricoes_por_pessoa.values, ax=ax, color=PRIMARY_COLOR)
-        ax.set_title("Quantas Pessoas se Inscrevem em Múltiplos Cursos?")
-        ax.set_xlabel("Número de Cursos Inscritos")
-        ax.set_ylabel("Número de Pessoas")
-        for c in ax.containers: ax.bar_label(c)
-        st.pyplot(fig)
+    if not df.empty:
+        st.markdown("---"); st.subheader("Crescimento da Comunidade ao Longo do Tempo")
+        df_growth = carregar_dados(CRESCIMENTO_PATH)
+        if not df_growth.empty:
+            df_growth = df_growth.set_index('periodo'); col1, col2 = st.columns(2)
+            with col1:
+                st.write("**Novas Pessoas por Mês**"); st.bar_chart(df_growth['novas_pessoas'], color=PRIMARY_COLOR)
+            with col2:
+                st.write("**Total Acumulado de Pessoas**"); st.line_chart(df_growth['total_acumulado'], color=PRIMARY_COLOR)
+        if 'curso_titulo' in df.columns:
+            st.markdown("---"); st.subheader("Análise de Performance dos Cursos"); col1, col2 = st.columns(2)
+            with col1:
+                st.markdown("**Popularidade (Total de Inscrições)**"); popularidade = df['curso_titulo'].value_counts(); st.dataframe(popularidade)
+            with col2:
+                st.markdown("**Alcance (Pessoas Únicas)**"); alcance = df.groupby('curso_titulo')['person_id'].nunique().sort_values(ascending=False); st.dataframe(alcance)
+            st.markdown("---"); st.subheader("Engajamento: Inscrições por Pessoa")
+            inscricoes_por_pessoa = df.groupby('person_id')['curso_titulo'].count().value_counts().sort_index(); fig, ax = plt.subplots(figsize=(10, 6)); sns.barplot(x=inscricoes_por_pessoa.index, y=inscricoes_por_pessoa.values, ax=ax, color=PRIMARY_COLOR, edgecolor=BACKGROUND_COLOR); ax.set_title("Quantas Pessoas se Inscrevem em Múltiplos Cursos?"); ax.set_xlabel("Número de Cursos Inscritos"); ax.set_ylabel("Número de Pessoas"); clean_spines(ax)
+            for c in ax.containers: ax.bar_label(c)
+            st.pyplot(fig)
 
 elif pagina_selecionada == "Perfil Demográfico":
     st.title("Análise do Perfil Demográfico (%)")
     if not df.empty:
         col1, col2 = st.columns([2, 1])
         with col1:
-            st.subheader("Por Faixa Etária"); fig1, ax1 = plt.subplots(figsize=(10, 6)); counts = df['faixa_etaria'].value_counts(normalize=True).mul(100); sns.barplot(y=counts.index, x=counts.values, ax=ax1, color=PRIMARY_COLOR, orient='h'); ax1.set_xlabel("Percentual (%)"); ax1.set_ylabel("Faixa Etária"); ax1.xaxis.set_major_formatter(mtick.PercentFormatter()); 
+            st.subheader("Por Faixa Etária"); fig1, ax1 = plt.subplots(figsize=(10, 6)); counts = df['faixa_etaria'].value_counts(normalize=True).mul(100); sns.barplot(y=counts.index, x=counts.values, ax=ax1, color=PRIMARY_COLOR, orient='h', edgecolor=BACKGROUND_COLOR); ax1.set_xlabel("Percentual (%)"); ax1.set_ylabel("Faixa Etária"); ax1.xaxis.set_major_formatter(mtick.PercentFormatter()); clean_spines(ax1)
             for c in ax1.containers: ax1.bar_label(c, fmt=' %.1f%%')
             st.pyplot(fig1)
-            st.subheader("Por Etnia"); fig2, ax2 = plt.subplots(figsize=(10, 6)); counts = df['etnia_padronizada'].value_counts(normalize=True).mul(100); sns.barplot(y=counts.index, x=counts.values, ax=ax2, color=PRIMARY_COLOR, orient='h'); ax2.set_xlabel("Percentual (%)"); ax2.set_ylabel("Etnia"); ax2.xaxis.set_major_formatter(mtick.PercentFormatter()); 
+            st.subheader("Por Etnia"); fig2, ax2 = plt.subplots(figsize=(10, 6)); counts = df['etnia_padronizada'].value_counts(normalize=True).mul(100); sns.barplot(y=counts.index, x=counts.values, ax=ax2, color=PRIMARY_COLOR, orient='h', edgecolor=BACKGROUND_COLOR); ax2.set_xlabel("Percentual (%)"); ax2.set_ylabel("Etnia"); ax2.xaxis.set_major_formatter(mtick.PercentFormatter()); clean_spines(ax2)
             for c in ax2.containers: ax2.bar_label(c, fmt=' %.1f%%')
             st.pyplot(fig2)
         with col2:
             st.subheader("Acesso a Computador"); fig_comp, ax_comp = plt.subplots(); counts_comp = df['computador_acesso'].value_counts(); ax_comp.pie(counts_comp, labels=counts_comp.index, autopct='%.1f%%', startangle=90, colors=[PRIMARY_COLOR, 'grey', '#8A2BE2']); st.pyplot(fig_comp)
-        st.subheader("Por Gênero"); fig3, ax3 = plt.subplots(figsize=(12, 6)); counts = df['genero_padronizado'].value_counts(normalize=True).mul(100); sns.barplot(x=counts.index, y=counts.values, ax=ax3, palette=SECONDARY_PALETTE); ax3.set_xlabel("Gênero"); ax3.set_ylabel("Percentual (%)"); ax3.yaxis.set_major_formatter(mtick.PercentFormatter()); 
+        st.subheader("Por Gênero"); fig3, ax3 = plt.subplots(figsize=(12, 6)); counts = df['genero_padronizado'].value_counts(normalize=True).mul(100); sns.barplot(x=counts.index, y=counts.values, ax=ax3, palette=SECONDARY_PALETTE, edgecolor=BACKGROUND_COLOR); ax3.set_xlabel("Gênero"); ax3.set_ylabel("Percentual (%)"); ax3.yaxis.set_major_formatter(mtick.PercentFormatter()); clean_spines(ax3)
         for c in ax3.containers: ax3.bar_label(c, fmt='%.1f%%')
         plt.xticks(rotation=45, ha='right'); st.pyplot(fig3)
 
 elif pagina_selecionada == "Perfil Profissional":
     st.title("Análise do Perfil Profissional (%)")
     if not df.empty:
-        st.subheader("Distribuição por Nível de Experiência"); fig, ax = plt.subplots(figsize=(12, 8)); counts = df['professional_level_padronizado'].value_counts(normalize=True).mul(100).sort_index(); sns.barplot(y=counts.index, x=counts.values, ax=ax, palette=SECONDARY_PALETTE, orient='h'); ax.set_xlabel("Percentual (%)"); ax.set_ylabel("Nível Profissional"); ax.xaxis.set_major_formatter(mtick.PercentFormatter()); 
+        st.subheader("Distribuição por Nível de Experiência"); fig, ax = plt.subplots(figsize=(12, 8)); counts = df['professional_level_padronizado'].value_counts(normalize=True).mul(100).sort_index(); sns.barplot(y=counts.index, x=counts.values, ax=ax, palette=SECONDARY_PALETTE, orient='h', edgecolor=BACKGROUND_COLOR); ax.set_xlabel("Percentual (%)"); ax.set_ylabel("Nível Profissional"); ax.xaxis.set_major_formatter(mtick.PercentFormatter()); clean_spines(ax)
         for c in ax.containers: ax.bar_label(c, fmt=' %.1f%%')
         st.pyplot(fig)
 
@@ -183,13 +160,13 @@ elif pagina_selecionada == "Análises Cruzadas":
         for n, c in enumerate(crosstab_reg_level.index):
             for i, (name, val) in enumerate(crosstab_reg_level.iloc[n].items()):
                 if val * 100 > 5: ax1.text(crosstab_reg_level.iloc[n, :i].sum() + val / 2, n, f'{val*100:.0f}%', ha='center', va='center', color='white', fontsize=9, weight='bold')
-        ax1.set_xlabel('Proporção (%)'); ax1.set_ylabel('Região'); ax1.xaxis.set_major_formatter(mtick.PercentFormatter(1.0)); ax1.legend(title='Nível Profissional', bbox_to_anchor=(1.05, 1), loc='upper left'); st.pyplot(fig1)
+        ax1.set_xlabel('Proporção (%)'); ax1.set_ylabel(''); ax1.xaxis.set_major_formatter(mtick.PercentFormatter(1.0)); clean_spines(ax1); legend = ax1.legend(title='Nível Profissional', bbox_to_anchor=(1.05, 1), loc='upper left', frameon=False); plt.setp(legend.get_title(), color=TEXT_COLOR); st.pyplot(fig1)
 
         st.subheader("Composição do Nível Profissional por Gênero"); fig_gen, ax_gen = plt.subplots(figsize=(14, 8)); crosstab_gen_level = pd.crosstab(df['genero_padronizado'], df['professional_level_padronizado'], normalize='index'); crosstab_gen_level.plot(kind='barh', stacked=True, ax=ax_gen, colormap='plasma');
         for n, c in enumerate(crosstab_gen_level.index):
             for i, (name, val) in enumerate(crosstab_gen_level.iloc[n].items()):
                 if val * 100 > 5: ax_gen.text(crosstab_gen_level.iloc[n, :i].sum() + val / 2, n, f'{val*100:.0f}%', ha='center', va='center', color='white', fontsize=9, weight='bold')
-        ax_gen.set_xlabel('Proporção (%)'); ax_gen.set_ylabel('Gênero'); ax_gen.xaxis.set_major_formatter(mtick.PercentFormatter(1.0)); ax_gen.legend(title='Nível Profissional', bbox_to_anchor=(1.05, 1), loc='upper left'); st.pyplot(fig_gen)
+        ax_gen.set_xlabel('Proporção (%)'); ax_gen.set_ylabel(''); ax_gen.xaxis.set_major_formatter(mtick.PercentFormatter(1.0)); clean_spines(ax_gen); legend = ax_gen.legend(title='Nível Profissional', bbox_to_anchor=(1.05, 1), loc='upper left', frameon=False); plt.setp(legend.get_title(), color=TEXT_COLOR); st.pyplot(fig_gen)
         
         st.subheader("Proporção de Pessoas Trabalhando na Área por Faixa Etária"); fig2, ax2 = plt.subplots(figsize=(12, 8)); crosstab_idade_work = pd.crosstab(df['faixa_etaria'].dropna(), df['working'].dropna(), normalize='index'); crosstab_idade_work.plot(kind='bar', stacked=True, ax=ax2, colormap='cividis');
         for i, (name, row) in enumerate(crosstab_idade_work.iterrows()):
@@ -197,7 +174,7 @@ elif pagina_selecionada == "Análises Cruzadas":
             for col_name, val in row.items():
                 if val * 100 > 5: ax2.text(i, cumulative_val + val / 2, f'{val*100:.0f}%', ha='center', va='center', color='white', fontsize=9, weight='bold')
                 cumulative_val += val
-        ax2.set_xlabel('Faixa Etária'); ax2.set_ylabel('Proporção (%)'); ax2.yaxis.set_major_formatter(mtick.PercentFormatter(1.0)); plt.xticks(rotation=45, ha='right'); ax2.legend(title='Trabalhando na área?', bbox_to_anchor=(1.05, 1), loc='upper left'); st.pyplot(fig2)
+        ax2.set_xlabel(''); ax2.set_ylabel('Proporção (%)'); ax2.yaxis.set_major_formatter(mtick.PercentFormatter(1.0)); plt.xticks(rotation=45, ha='right'); clean_spines(ax2); legend = ax2.legend(title='Trabalhando na área?', bbox_to_anchor=(1.05, 1), loc='upper left', frameon=False); plt.setp(legend.get_title(), color=TEXT_COLOR); st.pyplot(fig2)
 
         st.subheader("Proporção de Pessoas Trabalhando na Área por Etnia"); fig3, ax3 = plt.subplots(figsize=(12, 8)); crosstab_etnia_work = pd.crosstab(df['etnia_padronizada'].dropna(), df['working'].dropna(), normalize='index'); crosstab_etnia_work.plot(kind='bar', stacked=True, ax=ax3, colormap='inferno');
         for i, (name, row) in enumerate(crosstab_etnia_work.iterrows()):
@@ -205,7 +182,7 @@ elif pagina_selecionada == "Análises Cruzadas":
             for col_name, val in row.items():
                 if val * 100 > 5: ax3.text(i, cumulative_val + val / 2, f'{val*100:.0f}%', ha='center', va='center', color='white', fontsize=9, weight='bold')
                 cumulative_val += val
-        ax3.set_xlabel('Etnia'); ax3.set_ylabel('Proporção (%)'); ax3.yaxis.set_major_formatter(mtick.PercentFormatter(1.0)); plt.xticks(rotation=45, ha='right'); ax3.legend(title='Trabalhando na área?', bbox_to_anchor=(1.05, 1), loc='upper left'); st.pyplot(fig3)
+        ax3.set_xlabel(''); ax3.set_ylabel('Proporção (%)'); ax3.yaxis.set_major_formatter(mtick.PercentFormatter(1.0)); plt.xticks(rotation=45, ha='right'); clean_spines(ax3); legend = ax3.legend(title='Trabalhando na área?', bbox_to_anchor=(1.05, 1), loc='upper left', frameon=False); plt.setp(legend.get_title(), color=TEXT_COLOR); st.pyplot(fig3)
 
 elif pagina_selecionada == "Personas da Comunidade":
     st.title("Personas da Comunidade (Análise de Cluster)")
