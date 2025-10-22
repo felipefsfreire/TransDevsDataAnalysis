@@ -18,17 +18,14 @@ import plotly.express as px
 
 # --- Proteção por Senha ---
 def check_password():
-    """Retorna True se a senha estiver correta, False caso contrário."""
     def password_entered():
         if "password" in st.session_state and st.session_state["password"] == st.secrets.get("APP_PASSWORD", ""):
             st.session_state["password_correct"] = True
             del st.session_state["password"]
         else:
             st.session_state["password_correct"] = False
-
     if "password_correct" not in st.session_state:
         st.session_state["password_correct"] = False
-
     if not st.session_state["password_correct"]:
         st.text_input("Senha de Acesso", type="password", on_change=password_entered, key="password")
         if "password" in st.session_state and not st.session_state["password_correct"]:
@@ -101,17 +98,21 @@ if pagina_selecionada == "Visão Geral":
     st.title("Visão Geral do Impacto da TransDevs")
     df = carregar_csv(DATA_PATH)
     if df is not None:
-        st.markdown("### Indicadores Chave")
-        col1, col2, col3 = st.columns(3)
-        total_pessoas = df['person_id'].nunique()
-        col1.metric("Pessoas Únicas Analisadas", f"{total_pessoas}")
-        estados_brasileiros = df[~df['estado_padronizado'].isin(['Internacional', 'Inválido'])]
-        estados_alcancados = estados_brasileiros['estado_padronizado'].nunique()
-        col2.metric("Estados Brasileiros Alcançados", f"{estados_alcancados}")
-        trabalhando_count = df[df['working'].str.lower().str.contains('sim|empregade', na=False)].shape[0]
-        taxa_empregabilidade = (trabalhando_count / total_pessoas) * 100 if total_pessoas > 0 else 0
-        col3.metric("Taxa de Empregabilidade na Área", f"{taxa_empregabilidade:.1f}%")
-
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            st.markdown("### Indicadores Chave")
+            kpi1, kpi2, kpi3 = st.columns(3)
+            total_pessoas = df['person_id'].nunique(); kpi1.metric("Pessoas Únicas Analisadas", f"{total_pessoas}")
+            estados_brasileiros = df[~df['estado_padronizado'].isin(['Internacional', 'Inválido'])]; estados_alcancados = estados_brasileiros['estado_padronizado'].nunique(); kpi2.metric("Estados Brasileiros Alcançados", f"{estados_alcancados}")
+            trabalhando_count = df[df['working'].str.lower().str.contains('sim|empregade', na=False)].shape[0]; taxa_empregabilidade = (trabalhando_count / total_pessoas) * 100 if total_pessoas > 0 else 0; kpi3.metric("Taxa de Empregabilidade na Área", f"{taxa_empregabilidade:.1f}%")
+        with col2:
+            st.markdown("### Perfil da Comunidade")
+            if 'perfil_aluno' in df.columns:
+                fig_pie, ax_pie = plt.subplots(figsize=(5, 3))
+                counts_pie = df['perfil_aluno'].value_counts()
+                ax_pie.pie(counts_pie, labels=counts_pie.index, autopct='%.1f%%', startangle=90, colors=[PRIMARY_COLOR, 'grey'])
+                st.pyplot(fig_pie)
+        
         st.markdown("---")
         st.subheader("Distribuição da Comunidade por Região (%)")
         fig, ax = plt.subplots(figsize=(12, 7))
@@ -125,29 +126,31 @@ if pagina_selecionada == "Visão Geral":
         for container in ax.containers:
             ax.bar_label(container, fmt='%.1f%%', color=TEXT_COLOR, fontsize=10)
         st.pyplot(fig)
-
+        
         st.markdown("---")
         st.subheader("Mapa de Concentração da Comunidade por Estado")
         st.info("O mapa abaixo exibe a distribuição da comunidade pelos estados brasileiros. O **tamanho da bolha** é proporcional ao **número de pessoas** em cada estado. Passe o mouse sobre uma bolha para ver os detalhes.")
         df_mapa = carregar_csv(MAP_SUMMARY_PATH)
         if df_mapa is not None:
-            fig_map = px.scatter_mapbox(
-                df_mapa,
-                lat="latitude",
-                lon="longitude",
-                size="size_sqrt",
-                color_discrete_sequence=[PRIMARY_COLOR],
-                hover_name="estado_padronizado",
-                hover_data={"n_de_pessoas": True, "latitude": False, "longitude": False, "size_sqrt": False},
-                mapbox_style="carto-darkmatter",
-                center={"lat": -14.2350, "lon": -51.9253},
-                zoom=3.5,
-                labels={'n_de_pessoas':'Nº de Pessoas'}
-            )
+            fig_map = px.scatter_mapbox(df_mapa, lat="latitude", lon="longitude", size="size_sqrt", color_discrete_sequence=[PRIMARY_COLOR], hover_name="estado_padronizado", hover_data={"n_de_pessoas": True, "latitude": False, "longitude": False, "size_sqrt": False}, mapbox_style="carto-darkmatter", center={"lat": -14.2350, "lon": -51.9253}, zoom=3.5, labels={'n_de_pessoas':'Nº de Pessoas'})
             fig_map.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
             st.plotly_chart(fig_map, use_container_width=True)
         else:
             st.warning("Arquivo de resumo do mapa não encontrado. Execute 'analysis.py' atualizado.")
+
+        st.markdown("---")
+        st.subheader("Distribuição da Comunidade por Região (%)")
+        fig_reg, ax_reg = plt.subplots(figsize=(12, 7))
+        counts = df['regiao'].value_counts(normalize=True).mul(100)
+        sns.barplot(x=counts.index, y=counts.values, ax=ax_reg, color=PRIMARY_COLOR, edgecolor=BACKGROUND_COLOR)
+        ax_reg.set_title("Proporção de Pessoas por Região do Brasil", fontsize=18)
+        ax_reg.set_xlabel("Região")
+        ax_reg.set_ylabel("Percentual (%)")
+        ax_reg.yaxis.set_major_formatter(mtick.PercentFormatter())
+        clean_spines(ax_reg)
+        for container in ax_reg.containers:
+            ax_reg.bar_label(container, fmt='%.1f%%', color=TEXT_COLOR, fontsize=10)
+        st.pyplot(fig_reg)
     else:
         st.error("Arquivo de dados principal não encontrado. Execute o script 'analysis.py' e atualize o repositório.")
 
@@ -284,7 +287,7 @@ elif pagina_selecionada == "Análises Cruzadas":
         st.subheader("Proporção de Pessoas Trabalhando na Área por Faixa Etária")
         fig2, ax2 = plt.subplots(figsize=(12, 8))
         crosstab_idade_work = pd.crosstab(df['faixa_etaria'].dropna(), df['working'].dropna(), normalize='index')
-        crosstab_idade_work.plot(kind='bar', stacked=True, ax=ax2, colormap='cividis')
+        crosstab_idade_work.plot(kind='bar', stacked=True, ax=ax2, colormap='viridis')
         for i, (name, row) in enumerate(crosstab_idade_work.iterrows()):
             cumulative_val = 0
             for col_name, val in row.items():
@@ -295,7 +298,7 @@ elif pagina_selecionada == "Análises Cruzadas":
         st.subheader("Proporção de Pessoas Trabalhando na Área por Etnia")
         fig3, ax3 = plt.subplots(figsize=(12, 8))
         crosstab_etnia_work = pd.crosstab(df['etnia_padronizada'].dropna(), df['working'].dropna(), normalize='index')
-        crosstab_etnia_work.plot(kind='bar', stacked=True, ax=ax3, colormap='inferno')
+        crosstab_etnia_work.plot(kind='bar', stacked=True, ax=ax3, colormap='plasma')
         for i, (name, row) in enumerate(crosstab_etnia_work.iterrows()):
             cumulative_val = 0
             for col_name, val in row.items():
@@ -320,9 +323,12 @@ elif pagina_selecionada == "Personas da Comunidade":
             persona_id = row['persona']; summary_row = df_summary[df_summary['persona'] == persona_id].iloc[0]
             with st.expander(f"**Persona {summary_row['persona']}: {summary_row['faixa_etaria_moda']} - {summary_row['nivel_profissional_moda']}**"):
                 col1, col2, col3 = st.columns(3)
-                with col1: st.markdown("**Senioridade**"); exibir_detalhes_persona(row['level_distribution'])
-                with col2: st.markdown("**Escolaridade (Top 3)**"); exibir_detalhes_persona(row['top_schooling'])
-                with col3: st.markdown("**Tecnologias (Top 3)**"); exibir_detalhes_persona(row['top_technologies'])
+                with col1:
+                    st.markdown("**Senioridade**"); exibir_detalhes_persona(row['level_distribution'])
+                with col2:
+                    st.markdown("**Escolaridade (Top 3)**"); exibir_detalhes_persona(row['top_schooling'])
+                with col3:
+                    st.markdown("**Tecnologias (Top 3)**"); exibir_detalhes_persona(row['top_technologies'])
 
         st.markdown("---"); st.subheader("Insights Acionáveis")
         st.info("""- **Trilhas de Carreira Direcionadas:** Os focos tecnológicos claros de cada persona permitem a criação de programas específicos. **Persona 3** se beneficiaria de um 'Bootcamp de Front-End', enquanto a **Persona 1** teria mais proveito de uma 'Trilha de Desenvolvimento Back-End com Python/Node.js'.\n- **Aceleração para Profissionais Qualificados:** A **Persona 4**, com sua diversidade de senioridade, necessita de mais do que apenas networking. Oferecer 'Workshops de Arquitetura de Software' ou 'Mentorias de Liderança Técnica' pode ajudá-los a alcançar o nível Sênior e além.\n- **Inclusão Geográfica e de Habilidades Fundamentais:** A **Persona 2** (Novos Horizontes) reforça a necessidade de vagas remotas. Além disso, seu foco em SQL e web básico sugere que cursos de 'Análise de Dados com SQL e Python' poderiam ser uma porta de entrada de alto impacto para este grupo.""")
