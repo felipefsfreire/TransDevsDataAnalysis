@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Script Principal de Análise de Dados - TransDevs Data Analysis (VERSÃO FINAL COMPLETA)
+Script Principal de Análise de Dados - TransDevs Data Analysis (VERSÃO FINAL)
 Autor: [Seu Nome] & Smith (Mentor)
 Data: 02/10/2025
 """
@@ -15,7 +15,7 @@ from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
-import numpy as np # <-- NOVA IMPORTAÇÃO
+import numpy as np
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S', handlers=[logging.FileHandler("analysis.log", mode='w'), logging.StreamHandler()])
 logger = logging.getLogger(__name__)
@@ -67,17 +67,28 @@ def processar_dados_inscricoes(df: pd.DataFrame) -> pd.DataFrame:
     df_anon['nascdt_temp'] = df['nascdt']
     estado_variacoes = {'SP': ['são paulo', 'sp'], 'RJ': ['rio de janeiro', 'rj'], 'MG': ['minas gerais', 'mg', 'bh'], 'BA': ['bahia', 'ba'], 'CE': ['ceará', 'ce', 'ceara'], 'PE': ['pernambuco', 'pe'], 'PR': ['paraná', 'pr', 'parana'], 'RS': ['rio grande do sul', 'rs'], 'SC': ['santa catarina', 'sc'], 'GO': ['goiás', 'go', 'goias'], 'DF': ['distrito federal', 'df'], 'AM': ['amazonas'], 'RO': ['rondônia'], 'RN': ['rio grande do norte', 'rn'], 'AL': ['alagoas'], 'ES': ['espirito santo', 'es'], 'PA': ['pará', 'para'], 'MA': ['maranhão', 'ma'], 'SE': ['sergipe'], 'PI': ['piauí', 'piaui'], 'MS': ['mato grosso do sul', 'ms'], 'MT': ['mato grosso', 'mt'], 'PB': ['paraíba', 'paraiba'], 'AC': ['acre'], 'TO': ['tocantins'], 'RR': ['roraima'], 'Internacional': ['portugal', 'lisboa', 'espanha', 'oizumi', 'gunma', 'murcia', 'amadora', 'matosinhos']}
     df_anon['estado_padronizado'] = padronizar_categorias(df_anon['estado'], estado_variacoes, 'Inválido')
+    cidade_map_reverso = {v.lower(): k for k, v_list in {'SP': ['são paulo', 'sp', 'sao paulo', 'sãopaulo', 'osasco', 'jaú', 'jau', 'itapecerica da serra', 'sumaré', 'suzano', 'campinas', 'guarulhos', 'ribeirão preto', 'ribeirao preto', 'ribeirão preto/sp', 'mauá', 'maua', 'itaquaquetuba', 'presidente prudente', 'sertãozinho', 'vila sônia', 'são bernardo do campo', 'sao bernardo do campo', 'rio claro', 'taubaté', 'atibaia', 'embu das artes', 'embú das artes', 'santo andré', 'santo andre', 'piracicaba', 'votorantim', 'são vicente', 'são caetano do sul', 'ribeirão pires', 'barueri', 'sorocaba', 'bauru', 'mongaguá', 'jundiaí', 'jundiai', 'itupeva', 'santos', 'jales', 'cosmópolis', 'carapicuíba', 'carapicuiba', 'agudos', 'paulínia', 'santo amaro', 'mogi mirim', 'aruja', 'diadema', 'praia grande', 'mairiporã', 'lorena', 'limeira', 'matão', 'guarujá', 'são joão da boa vista', 'araraquara', 'campo limpo paulista', 'várzea paulista', 'francisco morato', 'são josé do rio preto', 'americana', 'marilia', 'ibiporã', 'catanduva', 'piratininga', 'franco da rocha', 'são carlos', 'assis', 'mogi das cruzes', 'santana de parnaíba', 'vargem grande paulista', 'mirassol', 'tuiuti', 'araçatuba', 'itápolis', 'ibiúna', 'itararé', 'campos novos paulista', 'piedade', 'são jose dos campos', 'ituverava', 'indaiatuba', 'pindamonhangaba', 'franca', 'itatiba', 'santa bárbara d’oeste', "santa bárbara d'oeste"], 'RJ': ['rio de janeiro', 'rj', 'eio de janeiro', 'rio de janeieo', 'angra dos reis', 'nova iguaçu', 'cachoeirinhas', 'duque de caxias', 'são joão de meriti', 'resende', 'campos dos goytacazes', 'caompos dos goytacazes', 'nilópolis', 'araruama', 'teresópolis', 'teresopolis', 'barra mansa', 'niterói', 'niteroi', 'rio de janeiro niteroi', 'paracambi', 'rio das pedras', 'belford roxo', 'magé', 'magé - rj', 'três rios', 'maricá', 'marica', 'itaboraí', 'queimados', 'ramos', 'seropédica', 'são gonçalo', 'sao goncalo'], 'MG': ['minas gerais', 'mg', 'minaa gerais', 'bh', 'belo horizonte', 'malacacheta', 'sabará', 'vitória da conquista', 'juiz de fora', 'betim', 'são joão del rei', 'alfenas', 'diamantina', 'nova lima', 'três corações', 'ituiutaba', 'joão monlevade', 'uberlândia', 'uberlandia', 'uberaba', 'vespasiano', 'ponte nova', 'contagem', 'montes claros', 'curvelo', 'divinópolis', 'ipatinga', 'patrocínio', 'brasília de minas', 'lavras', 'itajubá'], 'BA': ['bahia', 'ba', 'salvador', 'senhor do bonfim', 'trancoso', 'porto seguro', 'ilhéus', 'camaçari', 'são francisco do conde', 'barreiro', 'santo antônio de jesus', 'bom jesus da lapa', 'lauro de freitas', 'alagoinhas', 'simões filho', 'juazeiro', 'guanambi', 'feira de santana'], 'CE': ['ceará', 'ce', 'ceara', 'fortaleza', 'maracanaú', 'jaguaruana', 'canindé', 'sobral', 'crateús', 'ipu', 'camocim', 'itapipoca', 'russas', 'caucaia', 'campos sales'], 'PE': ['pernambuco', 'pe', 'recife', 'paulista', 'olinda', 'abreu e lima', 'carpina', 'jaboatão dos guararapes', 'jaboatao dos guararapes', 'camaragibe', 'são lourenço da mata', 'igarassu', 'caruaru', 'petrolina'], 'PR': ['paraná', 'pr', 'parana', 'curitiba', 'guarapuava', 'araucária', 'maringá', 'prudentópolis', 'mandirituba', 'paranaguá', 'piraquara', 'ponta grossa', 'ponta grossa - pr', 'goioerê', 'londrina', 'bandeirantes', 'pinhais', 'sarandi', 'imbituva', 'campo mourão', 'campo mourão / pr', 'cornélio procópio', 'toledo', 'pitanga', 'nova prata do iguaçu', 'laranjeiras do sul'], 'RS': ['rio grande do sul', 'rs', 'porto alegre', 'três passos', 'triunfo', 'sapiranga', 'são leopoldo', 'sao leopoldo', 'canoas', 'santa maria', 'pelotas', 'viamão', 'ijuí', 'guaíba', 'caxias do sul', 'rio grande', 'bage', 'alvorada', 'novo hamburgo', 'esteio', 'sapucaia do sul', 'campo bom', 'passo fundo', 'cacequi', 'coração de maría'], 'SC': ['santa catarina', 'sc', 'florianopolis', 'florianópolis', 'joinville', 'santa luzia', 'brusque', 'capivari de baixo', 'garopaba', 'balneário camburiú', 'são josé', 'tubarão', 'itajai', 'palhoça', 'lages', 'são francisco do sul', 'biguaçu', 'canoinhas', 'navegantes'], 'GO': ['goiás', 'go', 'goias', 'goiânia', 'valparaiso', 'anápolis', 'planaltina', 'águas lindas', 'águas lindas de goiás', 'valparaíso de goiás', 'senador canedo', 'aparecida de goiânia'], 'DF': ['distrito federal', 'df', 'brasília', 'brasilia', 'brasília - df', 'paranoá', 'taguatinga norte', 'cidade ocidental', 'recanto das emas', 'gama'], 'AM': ['amazonas', 'manaus', 'manaus - am'], 'RO': ['rondônia', 'porto velho', 'cacoal'], 'RN': ['rio grande do norte', 'rn', 'natal', 'são gonçalo do amarante', 'mossoró', 'são josé de mipibu', 'parnamirim', 'jucurutu'], 'AL': ['alagoas', 'maceió', 'maceio', 'delmiro gouveia'], 'ES': ['espirito santo', 'esporo santo', 'es', 'vitoria', 'vitória', 'vila velha', 'cariacica', 'serra', 'guarapari', 'viana'], 'PA': ['pará', 'para', 'belém', 'belem', 'ananindeua', 'marabá', 'castanhal', 'augusto corrêa', 'parauapebas'], 'MA': ['maranhão', 'ma', 'são luís', 'sao luis'], 'SE': ['sergipe', 'aracaju'], 'PI': ['piauí', 'piaui', 'teresina', 'parnaíba', 'miguel alves'], 'MS': ['mato grosso do sul', 'ms', 'campo grande', 'dourados'], 'MT': ['mato grosso', 'mt', 'cuiabá', 'várzea grande', 'nova mutum', 'rondonópolis'], 'PB': ['paraíba', 'paraiba', 'joão pessoa', 'joao pessoa', 'campina grande', 'cabedelo', 'mamanguape', 'mamanaguape', 'remígio'], 'AC': ['acre', 'rio branco', 'sena madureira'], 'TO': ['tocantins', 'palmas', 'araguaína'], 'RR': ['roraima', 'boa vista'], 'Internacional': ['internacional', 'portugal', 'lisboa', 'porto', 'espanha', 'oizumi', 'gunma', 'murcia', 'amadora', 'matosinhos']}.items() for v in v_list}
+    def padronizar_cidade_final(row):
+        cidade_str = row['cidade']; estado_sigla = row['estado_padronizado']
+        if pd.isna(cidade_str): return 'Não Informado'
+        cidade_limpa = re.split(r'/|,|-', str(cidade_str).lower().strip())[0].strip()
+        if cidade_limpa in cidade_map_reverso:
+            estado_cidade_mapeada = cidade_map_reverso[cidade_limpa]
+            if estado_cidade_mapeada == estado_sigla:
+                return cidade_limpa.title()
+        lixo = ['Rj', 'Sp', 'Mg', 'Ba', 'Sc', 'Rs', 'Paraná', 'Df', 'Es', 'Ma', 'Mt', 'Rn', 'fasdfasd', 'asfa', 'sdfasd', 'afsdfasdfdsa', 'Prefiro Não Informar', 'Solteiro(A)', 'Solteiro (A)', 'Casado', 'Solteiro', 'Solteira']
+        if cidade_limpa in lixo or cidade_limpa.isdigit(): return 'Inválido'
+        return cidade_limpa.title()
+    df_anon['cidade_padronizada'] = df_anon.apply(padronizar_cidade_final, axis=1)
     regiao_map = {'AC': 'Norte', 'AP': 'Norte', 'AM': 'Norte', 'PA': 'Norte', 'RO': 'Norte', 'RR': 'Norte', 'TO': 'Norte','AL': 'Nordeste', 'BA': 'Nordeste', 'CE': 'Nordeste', 'MA': 'Nordeste', 'PB': 'Nordeste', 'PE': 'Nordeste', 'PI': 'Nordeste', 'RN': 'Nordeste', 'SE': 'Nordeste','DF': 'Centro-Oeste', 'GO': 'Centro-Oeste', 'MT': 'Centro-Oeste', 'MS': 'Centro-Oeste','ES': 'Sudeste', 'MG': 'Sudeste', 'RJ': 'Sudeste', 'SP': 'Sudeste','PR': 'Sul', 'RS': 'Sul', 'SC': 'Sul'}
     df_anon['regiao'] = df_anon['estado_padronizado'].map(regiao_map)
-    etnia_variacoes = {'Branca': ['branca'], 'Parda': ['parda'], 'Preta': ['preta'], 'Amarela': ['amarela'], 'Indígena': ['indigena'], 'Múltiplas': ['preta,parda'], 'Preferiu não informar': ['nao_quero_responder', 'outro', '[]']}
-    df_anon['etnia_padronizada'] = padronizar_categorias(df_anon['etnia'], etnia_variacoes, 'Preferiu não informar')
-    genero_variacoes = {'Pessoa Trans': ['trans', 'transgenero', 'transsexual', 'transmasculino'], 'Mulher Trans': ['mulher trans'], 'Homem Trans': ['homem trans'], 'Não-Binárie': ['nao binarie', 'nao-binario', 'nao-binarie', 'agênero'], 'Travesti': ['travesti'], 'Cisgênero': ['cis', 'cisgenere', 'homem', 'mulher'], 'Queer': ['queer'], 'Outra identidade': ['outro', 'intersexo'], 'Preferiu não informar': ['nao_sei', 'nao_quero_responder', '[]']}
-    df_anon['genero_padronizado'] = padronizar_categorias(df_anon['genero'], genero_variacoes, 'Preferiu não informar')
+    etnia_variacoes = {'Branca': ['branca'], 'Parda': ['parda'], 'Preta': ['preta'], 'Amarela': ['amarela'], 'Indígena': ['indigena'], 'Múltiplas': ['preta,parda'], 'Preferiu não informar': ['nao_quero_responder', 'outro', '[]']}; df_anon['etnia_padronizada'] = padronizar_categorias(df_anon['etnia'], etnia_variacoes, 'Preferiu não informar')
+    genero_variacoes = {'Pessoa Trans': ['trans', 'transgenero', 'transsexual', 'transmasculino'], 'Mulher Trans': ['mulher trans'], 'Homem Trans': ['homem trans'], 'Não-Binárie': ['nao binarie', 'nao-binario', 'nao-binarie', 'agênero'], 'Travesti': ['travesti'], 'Cisgênero': ['cis', 'cisgenere', 'homem', 'mulher'], 'Queer': ['queer'], 'Outra identidade': ['outro', 'intersexo'], 'Preferiu não informar': ['nao_sei', 'nao_quero_responder', '[]']}; df_anon['genero_padronizado'] = padronizar_categorias(df_anon['genero'], genero_variacoes, 'Preferiu não informar')
     df_anon['nascdt_dt'] = pd.to_datetime(df_anon['nascdt_temp'], errors='coerce', dayfirst=True); df_anon['idade'] = (datetime.now() - df_anon['nascdt_dt']).dt.days / 365.25; bins = [0, 17, 24, 34, 44, 54, 64, 150]; labels = ['Menor de 18', '18-24 anos', '25-34 anos', '35-44 anos', '45-54 anos', '55-64 anos', '65+ anos']; df_anon['faixa_etaria'] = pd.cut(df_anon['idade'], bins=bins, labels=labels, right=False)
-    colunas_a_manter = list(dict.fromkeys([col for col in df.columns] + ['person_id', 'computador_acesso', 'estado_padronizado', 'cidade', 'regiao', 'etnia_padronizada', 'genero_padronizado', 'idade', 'faixa_etaria'])); colunas_a_remover = ['nascdt_temp', 'nascdt_dt', 'estado', 'etnia', 'genero', 'email', 'id', 'nome_completo', 'nascdt', 'telefone', 'nome_primeiro', 'nome_ultimo', 's_link', 'computador']; colunas_a_manter = [col for col in colunas_a_manter if col not in colunas_a_remover]; return df_anon[colunas_a_manter]
+    colunas_a_manter = list(dict.fromkeys([col for col in df.columns] + ['person_id', 'computador_acesso', 'estado_padronizado', 'cidade_padronizada', 'regiao', 'etnia_padronizada', 'genero_padronizado', 'idade', 'faixa_etaria'])); colunas_a_remover = ['nascdt_temp', 'nascdt_dt', 'estado', 'etnia', 'genero', 'email', 'id', 'nome_completo', 'nascdt', 'telefone', 'nome_primeiro', 'nome_ultimo', 's_link', 'computador', 'cidade']; colunas_a_manter = [col for col in colunas_a_manter if col not in colunas_a_remover]; return df_anon[colunas_a_manter]
 
 def processar_dados_perfil(df_profile: pd.DataFrame) -> pd.DataFrame:
-    logger.info("--- Processando Dados de Perfil ---")
+    logger.info("--- Processando Dados de Perfil ---");
     if df_profile.empty: return pd.DataFrame()
     df_processado = df_profile.copy(); df_processado['email'] = df_processado['email'].str.lower().str.strip(); df_processado['person_id'] = pd.factorize(df_processado['email'])[0] + 1; level_variacoes = {'Iniciante': ['iniciante'], 'Estagiário': ['estagiário', 'estagiario'], 'Júnior': ['júnior', 'junior'], 'Pleno': ['pleno'], 'Sênior': ['sênior', 'senior'], 'Especialista': ['especialista'], 'Liderança': ['liderança', 'lideranca', 'c-level'], 'Outro': ['outro']}; df_processado['professional_level_padronizado'] = padronizar_categorias(df_processado['professional_level'], level_variacoes, 'Não informado'); ordem_nivel = ['Iniciante', 'Estagiário', 'Júnior', 'Pleno', 'Sênior', 'Especialista', 'Liderança', 'Outro', 'Não informado']; df_processado['professional_level_padronizado'] = pd.Categorical(df_processado['professional_level_padronizado'], categories=ordem_nivel, ordered=True); colunas_profissionais = ['person_id', 'professional_level_padronizado', 'professional_area', 'professional_technologies', 'professional_tools', 'working', 'schooling']; colunas_a_manter = [col for col in colunas_profissionais if col in df_processado.columns]; return df_processado[colunas_a_manter]
 
@@ -120,12 +131,21 @@ def gerar_analise_de_crescimento(df_inscricoes: pd.DataFrame):
 
 def main():
     logger.info("="*50 + "\n==  INICIANDO PIPELINE DE DADOS COMPLETO (FINAL)  ==" + "\n" + "="*50)
-    df_inscricoes_raw = carregar_dados(RAW_INSCRICOES_PATH); df_profile_raw = carregar_dados(RAW_PROFILE_PATH); df_voluntariado_raw = carregar_dados(RAW_VOLUNTARIADO_PATH); df_states_coords = carregar_dados(STATES_COORDS_PATH)
+    df_inscricoes_raw = carregar_dados(RAW_INSCRICOES_PATH); df_profile_raw = carregar_dados(RAW_PROFILE_PATH); df_voluntariado_raw = carregar_dados(RAW_VOLUNTARIADO_PATH); df_cidades = carregar_dados(CIDADES_PATH); df_states_coords = carregar_dados(STATES_COORDS_PATH)
     if df_inscricoes_raw.empty: logger.error("Arquivo de inscrições não encontrado. Pipeline interrompido."); return
     gerar_analise_de_crescimento(df_inscricoes_raw)
     df_demografico = processar_dados_inscricoes(df_inscricoes_raw); df_profissional = processar_dados_perfil(df_profile_raw); df_voluntario = processar_dados_voluntariado(df_voluntariado_raw)
     logger.info("Iniciando merges..."); df_consolidado = pd.merge(df_demografico, df_profissional, on='person_id', how='left'); df_final = pd.merge(df_consolidado, df_voluntario, on='person_id', how='left')
-    df_final['is_volunteer'] = df_final['is_volunteer'].fillna('Não'); logger.info(f"Merges concluídos. Shape final: {df_final.shape}")
+    df_final['is_volunteer'] = df_final['is_volunteer'].fillna('Não')
+    
+    # Adiciona a identificação de alunos
+    if 'turma_slug' in df_final.columns:
+        alunos_ids = df_final[df_final['turma_slug'].notna()]['person_id'].unique()
+        df_final['perfil_aluno'] = np.where(df_final['person_id'].isin(alunos_ids), 'Matriculado', 'Em espera')
+    else:
+        df_final['perfil_aluno'] = 'Comunidade Geral'
+        
+    logger.info(f"Merges concluídos. Shape final: {df_final.shape}")
     if 'atuacao_tags' in df_final.columns:
         atuacao_counts = df_final[df_final['is_volunteer'] == 'Sim']['atuacao_tags'].explode().value_counts().reset_index(); atuacao_counts.columns = ['atuacao', 'count']; atuacao_counts.to_csv(ATUACAO_COUNT_PATH, index=False); logger.info(f"Contagem de tags de atuação salva em {ATUACAO_COUNT_PATH}")
     
@@ -135,7 +155,7 @@ def main():
         logger.info("Gerando resumo para o mapa de estados...")
         map_summary = df_final[df_final['estado_padronizado'] != 'Inválido'].groupby('estado_padronizado').agg(n_de_pessoas=('person_id', 'count')).reset_index()
         map_summary_final = pd.merge(map_summary, df_states_coords, left_on='estado_padronizado', right_on='uf', how='left')
-        map_summary_final['size_sqrt'] = np.sqrt(map_summary_final['n_de_pessoas']) # <-- NOVO: Coluna para tamanho da bolha
+        map_summary_final['size_sqrt'] = np.sqrt(map_summary_final['n_de_pessoas'])
         map_summary_final.to_csv(MAP_SUMMARY_PATH, index=False)
         logger.info(f"Resumo do mapa (com coordenadas) salvo em: {MAP_SUMMARY_PATH}")
     
